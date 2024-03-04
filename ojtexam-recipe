@@ -1,0 +1,76 @@
+from flask import Flask, jsonify, request
+
+app = Flask(__name__)
+
+recipes = [
+    {"id": 1, "name": "Recipe 1", "ingredients": ["ingredient1", "ingredient2"], "steps": ["Step 1", "Step 2"], "prep_time": 30},
+    {"id": 2, "name": "Recipe 2", "ingredients": ["ingredient3", "ingredient4"], "steps": ["Step 1", "Step 2", "Step 3"], "prep_time": 45},
+    # ... other recipes
+]
+
+comments = {}
+
+@app.route('/recipes', methods=['GET'])
+def get_all_recipes():
+    return jsonify(recipes)
+
+@app.route('/recipes', methods=['POST'])
+def add_recipe():
+    new_recipe = request.get_json()
+    new_recipe["id"] = len(recipes) + 1
+    recipes.append(new_recipe)
+    return jsonify(new_recipe)
+
+@app.route('/recipes/<int:recipe_id>', methods=['GET'])
+def get_recipe(recipe_id):
+    recipe = next((r for r in recipes if r['id'] == recipe_id), None)
+    if recipe:
+        return jsonify(recipe)
+    else:
+        return jsonify({"message": "Recipe not found"}), 404
+
+@app.route('/recipes/<int:recipe_id>', methods=['PUT'])
+def update_recipe(recipe_id):
+    recipe = next((r for r in recipes if r['id'] == recipe_id), None)
+    if recipe:
+        updated_recipe = request.get_json()
+        recipe.update(updated_recipe)
+        return jsonify(recipe)
+    else:
+        return jsonify({"message": "Recipe not found"}), 404
+
+@app.route('/recipes/<int:recipe_id>', methods=['DELETE'])
+def delete_recipe(recipe_id):
+    global recipes
+    recipes = [r for r in recipes if r['id'] != recipe_id]
+    return jsonify({"message": "Recipe deleted successfully"}), 200
+
+@app.route('/recipes/ratings/<int:recipe_id>', methods=['POST'])
+def rate_recipe(recipe_id):
+    rating_data = request.get_json()
+    rating = rating_data.get('rating')
+    
+    if 1 <= rating <= 5:
+        # Perform rating logic (store it, update averages, etc.)
+        return jsonify({"message": f"Rated recipe {recipe_id} with {rating} stars"}), 200
+    else:
+        return jsonify({"message": "Invalid rating. Please provide a rating between 1 and 5"}), 400
+
+@app.route('/recipes/comments/<int:recipe_id>', methods=['POST'])
+def comment_on_recipe(recipe_id):
+    comment_data = request.get_json()
+    comment_text = comment_data.get('comment')
+
+    if comment_text:
+        comments.setdefault(recipe_id, []).append(comment_text)
+        return jsonify({"message": f"Comment added to recipe {recipe_id}"}), 200
+    else:
+        return jsonify({"message": "Invalid comment. Please provide a comment text"}), 400
+
+@app.route('/recipes/comments/<int:recipe_id>', methods=['GET'])
+def get_comments_for_recipe(recipe_id):
+    recipe_comments = comments.get(recipe_id, [])
+    return jsonify({"comments": recipe_comments})
+
+if __name__ == '__main__':
+    app.run(debug=True)
